@@ -1,10 +1,12 @@
 # Steam Master Server Query CLI
 
 Steam Master Server Query CLI (smsq) — a command-line tool to retrieve and
-filter game server lists from the [Steam Master Server][].  
+filter game server lists from the [Steam Master Server][].
 It supports advanced filtering, JSON and table output formats, and is
-designed for server administrators, gamers, and automation scripts.  
-A valid [Steam API Key][] is required to use this tool.
+designed for server administrators, gamers, and automation scripts.
+
+> [!NOTE]  
+> A valid [Steam API Key][] is required to use this tool.
 
 ## Features
 
@@ -15,7 +17,7 @@ A valid [Steam API Key][] is required to use this tool.
 * Cross-platform: Linux, Windows, MacOS binaries.
 * Lightweight and with minimal dependencies.
 
-## Why smsq?
+## Why smsq
 
 The Steam Master Server Query API requires constructing complex filter strings
 (e.g., `appid\221100\map\namalsk`) and remembering all supported keys.
