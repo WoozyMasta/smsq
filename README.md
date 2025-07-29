@@ -9,7 +9,7 @@ A valid [Steam API Key][] is required to use this tool.
 ## Features
 
 * Query Steam Master Server for game servers.
-* Filter results by AppID, map, tags, or server properties (e.g., VAC, password).
+* Filter results by AppID, map, tags, or server properties (e.g. VAC, password).
 * Output in JSON (for easy jq parsing) or formatted table view.
 * Supports NOR and NAND filters for exclusion logic.
 * Cross-platform: Linux, Windows, MacOS binaries.
