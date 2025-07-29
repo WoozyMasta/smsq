@@ -18,23 +18,31 @@ build() {
     go build -ldflags="-s -w -X '$version' -X '$commit' -X '$date' -X '$url'" \
       -o "./build/$bin" -tags=forceposix "$WORK_DIR"/*.go
 
-  cyclonedx-gomod bin -json -output "./build/$bin.sbom.json" "./build/$bin"
+  if command -v cyclonedx-gomod &>/dev/null; then
+    cyclonedx-gomod bin -json -output "./build/$bin.sbom.json" "./build/$bin"
+  fi
 
   if [ "$GOOS" == "linux" ] && command -v upx &>/dev/null; then
     upx --lzma --best "./build/$bin" > /dev/null
     upx -t "./build/$bin" > /dev/null
+    printf '\tUPX packed\t'
   fi
 
   echo "./build/$bin"
 }
 
-version="internal/vars.Version=$(git describe --tags --abbrev=0 2>/dev/null || echo 0.0.0)"
-commit="internal/vars.Commit=$(git rev-parse HEAD 2>/dev/null || :)"
-date="internal/vars.BuildTime=$(date -uIs)"
-url="internal/vars.URL=https://$(grep -Po 'module \K.*$' go.mod)"
+module="$(grep -Po 'module \K.*$' go.mod)"
+version="$module/internal/vars.Version=$(git describe --tags --abbrev=0 2>/dev/null || echo 0.0.0)"
+commit="$module/internal/vars.Commit=$(git rev-parse HEAD 2>/dev/null || :)"
+date="$module/internal/vars.BuildTime=$(date -uIs)"
+url="$module/internal/vars.URL=https://$module"
 
 mkdir -p ./build
 go mod tidy
+
+if command -v golangci-lint &>/dev/null; then
+  golangci-lint run || :
+fi
 
 if [ -z "${1:-}" ]; then
   build darwin amd64
@@ -47,8 +55,10 @@ if [ -z "${1:-}" ]; then
   build windows amd64
   build windows arm64
 
-  cyclonedx-gomod app -json -packages -files -licenses \
-    -output "./build/$BIN_NAME.sbom.json" -main "$WORK_DIR"
+  if command -v cyclonedx-gomod &>/dev/null; then
+    cyclonedx-gomod app -json -packages -files -licenses \
+      -output "./build/$BIN_NAME.sbom.json" -main "$WORK_DIR"
+  fi
 else
   build "${@}"
 fi

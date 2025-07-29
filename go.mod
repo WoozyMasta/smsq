@@ -1,4 +1,4 @@
-module smsq
+module github.com/woozymasta/smsq
 
 go 1.24.2
 

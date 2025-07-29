@@ -9,9 +9,10 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"smsq/internal/keys"
-	"smsq/internal/table"
-	"smsq/internal/vars"
+
+	"github.com/woozymasta/smsq/internal/keys"
+	"github.com/woozymasta/smsq/internal/table"
+	"github.com/woozymasta/smsq/internal/vars"
 
 	"github.com/jessevdk/go-flags"
 	"github.com/woozymasta/steam/serverlist"
