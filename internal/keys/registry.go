@@ -1,111 +1,134 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: Copyright 2025-2026 WoozyMasta
+// Source: https://github.com/WoozyMasta/smsq
+
 package keys
 
 import (
 	"regexp"
-
-	"github.com/woozymasta/steam/serverlist"
 )
 
-// Registry maps CLI string keys to FilterKey constants with validation meta.
+// Registry maps shared CLI filter names to wire keys and validation metadata.
 var Registry = map[string]Info{
 	"dedicated": {
-		Key:      serverlist.KeyDedicated,
-		Desc:     "1 — Dedicated servers, 0 — Non-dedicated",
+		Key:      "dedicated",
+		Desc:     "Dedicated servers; 0 selects non-dedicated servers",
+		Example:  "1",
+		Flag:     true,
 		Validate: boolVal,
 		Allowed:  []string{"0", "1"},
 	},
 	"secure": {
-		Key:      serverlist.KeySecure,
-		Desc:     "1 — VAC/BattleEye, 0 — Insecure",
+		Key:      "secure",
+		Desc:     "VAC-protected servers; 0 selects servers without VAC protection",
+		Example:  "1",
+		Flag:     true,
 		Validate: boolVal,
 		Allowed:  []string{"0", "1"},
 	},
 	"gamedir": {
-		Key:     serverlist.KeyGameDir,
-		Desc:    `Game dir, e.g. "tf", "cstrike", "dayz"`,
+		Key:     "gamedir",
+		Desc:    "Match the game's directory identifier",
+		Example: "cstrike",
 		Pattern: regexp.MustCompile(`^[a-z0-9_]+$`),
 	},
 	"map": {
-		Key:     serverlist.KeyMap,
-		Desc:    `Map name, e.g. "ctf_2fort"`,
+		Key:     "map",
+		Desc:    "Match the server's map name",
+		Example: "de_dust2",
 		Pattern: regexp.MustCompile(`^[\w\-\*]+$`),
 	},
 	"linux": {
-		Key:      serverlist.KeyLinux,
-		Desc:     "1 — Linux host, 0 — Other OS",
+		Key:      "linux",
+		Desc:     "Linux servers; 0 selects non-Linux servers",
+		Example:  "1",
+		Flag:     true,
 		Validate: boolVal,
 		Allowed:  []string{"0", "1"},
 	},
 	"password": {
-		Key:      serverlist.KeyPassword,
-		Desc:     "1 — Password protected, 0 — Open",
+		Key:      "password",
+		Desc:     "Password-protected servers; 0 selects servers without a password",
+		Example:  "1",
+		Flag:     true,
 		Validate: boolVal,
 		Allowed:  []string{"0", "1"},
 	},
 	"empty": {
-		Key:      serverlist.KeyEmpty,
-		Desc:     "1 — Not empty, 0 — Empty",
+		Key:      "empty",
+		Desc:     "Servers with players; 0 selects servers with no players",
+		Example:  "1",
+		Flag:     true,
 		Validate: boolVal,
 		Allowed:  []string{"0", "1"},
 	},
 	"full": {
-		Key:      serverlist.KeyFull,
-		Desc:     "1 — Not full, 0 — Full",
+		Key:      "full",
+		Desc:     "Servers below capacity; 0 selects full servers",
+		Example:  "1",
+		Flag:     true,
 		Validate: boolVal,
 		Allowed:  []string{"0", "1"},
+	},
+	"notfull": {
+		Key:     "notfull",
+		Desc:    "Select servers below reported capacity; Steam ignores the operand",
+		Example: "1",
+		Flag:    true,
 	},
 	"proxy": {
-		Key:      serverlist.KeyProxy,
-		Desc:     "1 — Proxy servers, 0 — Normal servers",
+		Key:      "proxy",
+		Desc:     "Proxy servers; 0 selects non-proxy servers",
+		Example:  "1",
+		Flag:     true,
 		Validate: boolVal,
 		Allowed:  []string{"0", "1"},
 	},
-	"appid": {
-		Key:      serverlist.KeyAppID,
-		Desc:     `Exact AppID, e.g. 221100`,
-		Validate: uintVal,
-	},
 	"napp": {
-		Key:      serverlist.KeyNotAppID,
-		Desc:     `Exclude AppID`,
+		Key:      "napp",
+		Desc:     "Exclude this Steam application ID",
+		Example:  "10",
 		Validate: uintVal,
 	},
 	"noplayers": {
-		Key:      serverlist.KeyNoPlayers,
-		Desc:     "1 — Zero players, 0 — One or more players",
+		Key:      "noplayers",
+		Desc:     "Servers with zero players; 0 selects servers with players",
+		Example:  "1",
+		Flag:     true,
 		Validate: boolVal,
 		Allowed:  []string{"0", "1"},
 	},
 	"white": {
-		Key:      serverlist.KeyWhite,
-		Desc:     "1 — Whitelist on, 0 — off",
+		Key:      "white",
+		Desc:     "Servers with whitelist enabled; 0 selects servers with it disabled",
+		Example:  "1",
+		Flag:     true,
 		Validate: boolVal,
 		Allowed:  []string{"0", "1"},
 	},
 	"gametype": {
-		Key:  serverlist.KeyGameType,
-		Desc: `sv_tags entry, e.g. "battleye"`,
+		Key:     "gametype",
+		Desc:    "Match a server tag (sv_tags)",
+		Example: "battleye",
 	},
 	"gamedata": {
-		Key:  serverlist.KeyGameData,
-		Desc: `Hidden gamedata tag, e.g. "tag1"`,
+		Key:     "gamedata",
+		Desc:    "Match a hidden game-data tag",
+		Example: "tag1",
 	},
 	"name_match": {
-		Key:  serverlist.KeyName,
-		Desc: `Wildcard name, e.g. "*server*"`,
+		Key:     "name_match",
+		Desc:    "Match the server name using wildcards",
+		Example: "*server*",
 	},
 	"version_match": {
-		Key:  serverlist.KeyVersion,
-		Desc: `Wildcard version, e.g. "1.3.*"`,
-	},
-	"collapse_addr_hash": {
-		Key:      serverlist.KeySingleAddr,
-		Desc:     "1 — One server per IP, 0 — many",
-		Validate: boolVal,
-		Allowed:  []string{"0", "1"},
+		Key:     "version_match",
+		Desc:    "Match the game version using wildcards",
+		Example: "1.3.*",
 	},
 	"gameaddr": {
-		Key:  serverlist.KeyGameAddr,
-		Desc: `Exact IP[:port], e.g. "192.168.1.1:27015"`,
+		Key:     "gameaddr",
+		Desc:    "Match this exact game address",
+		Example: "192.0.2.1:27015",
 	},
 }

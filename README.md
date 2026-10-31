@@ -1,160 +1,208 @@
-# Steam Master Server Query CLI
+# SMSQ - Steam Master Server Query CLI
 
-Steam Master Server Query CLI (smsq) — a command-line tool to retrieve and
-filter game server lists from the [Steam Master Server][].
-It supports advanced filtering, JSON and table output formats, and is
-designed for server administrators, gamers, and automation scripts.
+<!-- markdownlint-disable-next-line MD033 -->
+<img src="logo.svg" alt="SMSQ Logo" align="right" width="128">
 
-> [!NOTE]  
-> A valid [Steam API Key][] is required to use this tool.
+Command-line client for finding Steam game servers through -
+legacy master server UDP, the Steam Web API, and Steam Connection Manager (CM).
+It provides shared filters and output options
+while keeping transport-specific settings separate.
 
-## Features
+<!-- markdownlint-disable-next-line MD033 -->
+## Supported protocols and components <br clear="right"/>
 
-* Query Steam Master Server for game servers.
-* Filter results by AppID, map, tags, or server properties (e.g. VAC, password).
-* Output in JSON (for easy jq parsing) or formatted table view.
-* Supports NOR and NAND filters for exclusion logic.
-* Cross-platform: Linux, Windows, MacOS binaries.
-* Lightweight and with minimal dependencies.
+### Supported protocols
 
-## Why smsq
+* Legacy Steam Master Server Query Protocol (MSQP) over UDP.
+  Returns server addresses and supports reading subsequent master-server pages.
+  The UDP command requires reachable master-server endpoints,
+  whose availability is not guaranteed.
+* Steam `IGameServersService/GetServerList` Web API.
+  Returns full server records or addresses
+  and can use Discovery to work around the per-request result limit.
+* Steam Connection Manager (CM) protobuf over WebSocket.
+  Uses an authenticated Steam session and returns
+  full available server metadata by default through `MasterServerQuery`.
+  Use `--records addresses` for endpoint-only results.
+  Discovery plans are reusable.
 
-The Steam Master Server Query API requires constructing complex filter strings
-(e.g., `appid\221100\map\namalsk`) and remembering all supported keys.
-smsq simplifies this by providing all filter keys with built-in descriptions
-and validation, so you can build powerful queries using simple `key=value`
-pairs without memorizing obscure syntax.
+### Project components
 
-It replaces manual curl calls and raw JSON parsing with a clean,
-user-friendly CLI.
+* [`smsq`][CLI]: CLI for querying all three transports
+  with a shared filter syntax and output configuration;
+* [MSQP][MSQP]: Go module for the legacy UDP master-server protocol;
+* [Steam Server List][Steam Server List]:
+  Go module for the Web API and server-list Discovery;
+* [Steam CM][Steam CM]:
+  Go module for authenticated CM sessions and game-server queries.
 
 ## Installation
 
-You can download the latest version of the programme by following the links:
+### CLI
 
-* [MacOS arm64][]
-* [MacOS amd64][]
-* [Linux i386][]
-* [Linux amd64][]
-* [Linux arm][]
-* [Linux arm64][]
-* [Windows i386][]
-* [Windows amd64][]
-* [Windows arm64][]
+Download the latest release for your platform:
 
-For Linux you can also use the command
+Arch/OS   | macOS           | Linux           | Windows
+--------- | --------------- | --------------- | -----------------
+**AMD64** | [macOS amd64][] | [Linux amd64][] | [Windows amd64][]
+**ARM64** | [macOS arm64][] | [Linux arm64][] | [Windows arm64][]
 
-```bash
-curl -#SfLo /usr/bin/smsq \
-  https://github.com/WoozyMasta/smsq/releases/latest/download/smsq-linux-amd64
-chmod +x /usr/bin/smsq
-smsq -h && smsq -v
+Or install with Go toolchain:
+
+```shell
+go install github.com/woozymasta/smsq/cmd/smsq
 ```
 
-## Parameters
+<!-- markdownlint-disable MD033 -->
 
-This help information is available when running the program
-with the `--help` flag
+<details>
+  <summary>Download the latest release with curl in Bash:</summary>
 
-```bash
-smsq --help
+```shell
+case "$(uname -s)" in
+  Linux*) OS=linux;;
+  Darwin*) OS=darwin;;
+  MINGW*|MSYS*|CYGWIN*) OS=windows; EXT=.exe;;
+  *) exit 1;;
+esac
+
+case "$(uname -m)" in
+  x86_64|amd64) ARCH=amd64;;
+  aarch64|arm64) ARCH=arm64;;
+  *) exit 1;;
+esac
+
+BIN="./smsq$EXT"
+REPO='https://github.com/WoozyMasta/smsq'
+
+curl -#SfLo "$BIN" "$REPO/releases/latest/download/smsq-$OS-$ARCH$EXT"
+
+chmod +x "$BIN"
+"$BIN" -h && "$BIN" -v
+
+# Optionally move the binary to some PATH dir:
+mv "$BIN" /usr/local/bin/
 ```
 
-```txt
-Usage:
-  smsq [OPTIONS]
-  smsq -f appid=221100 -f map=namalsk -t -l 10
+</details>
 
-Steam Master-Server Query CLI.
+<!-- markdownlint-enable MD033 -->
 
-Application Options:
-  -k, --api-key=      Steam Web API key [$STEAM_API_KEY]
-  -f, --filter=       Filter: key=value (repeatable)
-  -x, --nor=          NOR filter: key=value (repeatable)
-  -X, --nand=         NAND filter: key=value (repeatable)
-  -l, --limit=        Max servers to fetch (Steam API limit 10 000) (default: 100)
-  -p, --pretty        Pretty‑print JSON
-  -t, --table         Print result as table
-  -c, --column-width= Max width for NAME column when --table is used (default: 64)
-  -v, --version       Show build info and exit
-  -h, --help          Show help message
+> [!NOTE]
+> SMSQ is an independent client and is not affiliated with or endorsed by Valve.
 
-Filter keys:
-  white                1 — Whitelist on, 0 — off
-  gametype             sv_tags entry, e.g. "battleye"
-  dedicated            1 — Dedicated servers, 0 — Non-dedicated
-  password             1 — Password protected, 0 — Open
-  gameaddr             Exact IP[:port], e.g. "192.168.1.1:27015"
-  empty                1 — Not empty, 0 — Empty
-  proxy                1 — Proxy servers, 0 — Normal servers
-  collapse_addr_hash   1 — One server per IP, 0 — many
-  gamedata             Hidden gamedata tag, e.g. "tag1"
-  version_match        Wildcard version, e.g. "1.3.*"
-  secure               1 — VAC/BattleEye, 0 — Insecure
-  gamedir              Game dir, e.g. "tf", "cstrike", "dayz"
-  map                  Map name, e.g. "ctf_2fort"
-  linux                1 — Linux host, 0 — Other OS
-  appid                Exact AppID, e.g. 221100
-  name_match           Wildcard name, e.g. "*server*"
-  full                 1 — Not full, 0 — Full
-  napp                 Exclude AppID
-  noplayers            1 — Zero players, 0 — One or more players
+## CLI usage
+
+The root command provides shared filtering,
+result limits, timeouts, and output options.
+
+> [!TIP]
+> Without a subcommand, SMSQ runs `rest`,
+> the recommended option for most queries.
+> Use `udp` or `grpc` when you specifically need those transports.
+
+Filter support and behavior can vary by protocol and game.
+Select the Steam AppID with `--app-id`,
+for example `--app-id 730` for Counter-Strike 2.
+See the [CLI reference][CLI] for every option,
+validation rule, and generated command example.
+
+### Commands
+
+* `udp`: query one or more legacy master servers;
+* `rest` (default): query `IGameServersService/GetServerList`
+  and optionally discover results beyond one response page;
+* `grpc`: query Steam CM over an authenticated connection.
+  This command uses protobuf over WebSocket; it is not standard gRPC.
+
+### Examples
+
+```shell
+# Query a legacy master server.
+smsq udp --master master.example.net:27011 \
+  --app-id 10 --limit 1000
+
+# Query server addresses through the default Web API command.
+STEAM_API_KEY=some-key
+smsq --app-id 730 --records addresses --limit 500
+
+# Discover a large Web API result set and save a reusable plan.
+smsq rest --api-key some-key \
+  --app-id 730 --limit 120000 \
+  --records addresses --plan-out rest-plan.json
+
+# Authenticate to Steam CM and cache the refresh token locally.
+smsq grpc --app-id 730 --auth-mode qr \
+  --token-file ./.steam-token.json --records addresses
 ```
 
-## Example usage
+## Authentication and Discovery
 
-```bash
-smsq -k <API_KEY> -f appid=221100 -l 5 -t
-```
+The Web API command requires a Steam Web API key.
+Pass it with `--api-key` or provide it through `STEAM_API_KEY`.
 
-```txt
-#   ADDR                   NAME                                      MAP             PRODUCT   VERSION       PLAYERS
-1   212.124.22.212:27010   Test Development Server 1 chernarusplus   chernarusplus   dayz      1.28.160123   0/5
-2   212.124.22.212:27012   Test Development Server 3 sakhal          sakhal          dayz      1.28.160123   0/5
-3   94.181.44.83:27016     DAYZ 323                                  chernarusplus   dayz      1.28.160123   0/60
-4   95.79.97.108:27016     lyskovo                                   chernarusplus   dayz      1.28.160123   0/64
-5   193.238.44.61:2803     [FXT] FOXTROT DeathMatch [1PP] S          enoch           dayz      1.28.160123   0/10
-```
+CM queries require a Steam account session.
+The CLI supports QR approval, Steam Guard code, and mobile approval.
+`--token-file` stores the refresh token as plaintext
+so later runs can reuse the session instead of repeating authentication.
 
-More examples
+> [!CAUTION]
+> Treat the token file as a credential. Do not commit or share it.
+> Without `--token-file`, the token stays in memory for the current run.
 
-```bash
-# Query DayZ servers with a table view (limit 5), pass token in option
-smsq -k <API_KEY> -f appid=221100 -t
-# Query DayZ servers with a table view (limit 5), pass token in variable
-STEAM_API_KEY=key smsq -f appid=221100 -f map=namalsk -t -l 5
-# Export token
-export STEAM_API_KEY=key
-# Filter with jq to show only servers with players
-smsq -f appid=221100 | jq '.[] | select(.players > 0) | .name'
-# Show address, map, and player count
-smsq -f appid=221100 | jq -r '.[] | "\(.addr) | \(.map) | \(.players)/\(.max_players)"'
-```
+REST and CM Discovery split large result sets into filtered requests.
+A single REST response is limited to 10,000 records,
+so larger requests use Discovery.
+Check `complete` in JSON or YAML output:
+`false` means collection stopped before all planned work was exhausted;
+`true` describes plan execution,
+not a guarantee that Steam's live listing is complete or static.
 
-## Support me 💖
+Save the resulting plan with `--plan-out`
+and reuse it on later runs with `--plan-in`;
+this avoids rebuilding the same query plan for recurring collections.
+Discovery can issue multiple Web API requests,
+so avoid polling it too frequently.
 
-If you enjoy my projects and want to support further development,
-feel free to donate! Every contribution helps to keep the work going.
-Thank you!
+> [!NOTE]
+> Raw filters bypass structured validation
+> and cannot be combined with structured filters or Discovery.
 
-### Crypto Donations
+Supply the AppID with `--app-id` or as the leading `\appid\<id>` pair
+in the raw filter; an AppID in the raw filter takes precedence over `--app-id`.
 
-<!-- cSpell:disable -->
-* **BTC**: `1Jb6vZAMVLQ9wwkyZfx2XgL5cjPfJ8UU3c`
-* **USDT (TRC20)**: `TN99xawQTZKraRyvPAwMT4UfoS57hdH8Kz`
-* **TON**: `UQBB5D7cL5EW3rHM_44rur9RDMz_fvg222R4dFiCAzBO_ptH`
-<!-- cSpell:enable -->
+## Protocol Documentation
+
+For details on the protocols and APIs used, see:
+
+* [Steam Master Server Query Protocol][Master Server Query Protocol]
+* [Steamworks `IGameServersService`][IGameServersService]
+* [Steam CM module documentation][Steam CM]
+
+## Tested Games
+
+Live server-list checks have covered Counter-Strike titles and other games.
+CM Discovery has also been exercised with large result sets.
+Availability and results depend on the game and Steam's current server listing.
+
+## 👉 [Support Me][]
+
+Your support is greatly appreciated!
 
 <!-- Links -->
+[Master Server Query Protocol]: https://developer.valvesoftware.com/wiki/Master_Server_Query_Protocol "Valve Master Server Query Protocol"
+[IGameServersService]: https://partner.steamgames.com/doc/webapi/IGameServersService "Steamworks IGameServersService"
 
-[Steam Master Server]: https://developer.valvesoftware.com/wiki/Master_Server_Query_Protocol
-[Steam API Key]: https://steamcommunity.com/dev/apikey
-[MacOS arm64]: https://github.com/WoozyMasta/smsq/releases/latest/download/smsq-darwin-arm64 "MacOS arm64 file"
-[MacOS amd64]: https://github.com/WoozyMasta/smsq/releases/latest/download/smsq-darwin-amd64 "MacOS amd64 file"
-[Linux i386]: https://github.com/WoozyMasta/smsq/releases/latest/download/smsq-linux-386 "Linux i386 file"
-[Linux amd64]: https://github.com/WoozyMasta/smsq/releases/latest/download/smsq-linux-amd64 "Linux amd64 file"
-[Linux arm]: https://github.com/WoozyMasta/smsq/releases/latest/download/smsq-linux-arm "Linux arm file"
-[Linux arm64]: https://github.com/WoozyMasta/smsq/releases/latest/download/smsq-linux-arm64 "Linux arm64 file"
-[Windows i386]: https://github.com/WoozyMasta/smsq/releases/latest/download/smsq-windows-386.exe "Windows i386 file"
-[Windows amd64]: https://github.com/WoozyMasta/smsq/releases/latest/download/smsq-windows-amd64.exe "Windows amd64 file"
-[Windows arm64]: https://github.com/WoozyMasta/smsq/releases/latest/download/smsq-windows-arm64.exe "Windows arm64 file"
+[CLI]: ./CLI.md "Generated command-line reference"
+[MSQP]: https://github.com/WoozyMasta/msqp "Legacy UDP master-server module"
+[Steam Server List]: https://github.com/WoozyMasta/steamserverlist "Steam Web API server-list module"
+[Steam CM]: https://github.com/WoozyMasta/steamcm "Steam Connection Manager module"
+
+[macOS arm64]: https://github.com/WoozyMasta/smsq/releases/latest/download/smsq-darwin-arm64 "macOS arm64 binary"
+[macOS amd64]: https://github.com/WoozyMasta/smsq/releases/latest/download/smsq-darwin-amd64 "macOS amd64 binary"
+[Linux amd64]: https://github.com/WoozyMasta/smsq/releases/latest/download/smsq-linux-amd64 "Linux amd64 binary"
+[Linux arm64]: https://github.com/WoozyMasta/smsq/releases/latest/download/smsq-linux-arm64 "Linux arm64 binary"
+[Windows amd64]: https://github.com/WoozyMasta/smsq/releases/latest/download/smsq-windows-amd64.exe "Windows amd64 binary"
+[Windows arm64]: https://github.com/WoozyMasta/smsq/releases/latest/download/smsq-windows-arm64.exe "Windows arm64 binary"
+
+[Support Me]: https://gist.github.com/WoozyMasta/7b0cabb538236b7307002c1fbc2d94ea

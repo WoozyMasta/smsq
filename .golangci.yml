@@ -1,36 +1,65 @@
 version: "2"
 run:
-  tests: false
+  tests: true
+
 linters:
   enable:
-    - bodyclose
+    - modernize
+    - prealloc
+    - tagliatelle
+    - perfsprint
+    - asciicheck
+    - bidichk
+    - decorder
     - dupl
+    - gocritic
+    - bodyclose
     - gosec
     - nilerr
     - predeclared
     - revive
     - rowserrcheck
-    - sqlclosecheck
     - tparallel
     - unconvert
     - unparam
     - whitespace
-  settings:
-    dupl:
-      threshold: 100
-    lll:
-      line-length: 140
+    - staticcheck
+    - goheader
+
   exclusions:
     generated: lax
     presets:
       - common-false-positives
+    rules:
+      - path: _test\.go$
+        text: '^G115:'
+        linters:
+          - gosec
+      - linters:
+          - revive
+        path: 'pkg/keywords/types/(gametype|language|platform|serverstate)\.go'
+        text: '^exported:'
     paths:
       - third_party$
       - builtin$
       - examples$
+
+  settings:
+    goheader:
+      template: |-
+        SPDX-License-Identifier: MIT
+        SPDX-FileCopyrightText: Copyright 2025-2026 WoozyMasta
+        Source: https://github.com/WoozyMasta/smsq
+    tagliatelle:
+      case:
+        rules:
+          json: snake
+          yaml: snake
+
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
+
 formatters:
   enable:
     - goimports
